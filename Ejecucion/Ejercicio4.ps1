@@ -46,11 +46,15 @@ $watcher.Path = $directorio
 $watcher.NotifyFilter = [System.IO.NotifyFilters]'FileName'
 
 
-
+$messageData = [PSCustomObject]@{
+    PathLog    = $salida
+    Directorio = $directorio
+}
+ 
 $action = {
     param($salida) 
     #$PathLog = "C:\Users\Florencia\Documents\Facultad\PLAN2023\3654-VirtualizacionDeHardware\log"
-    $PathLog = $event.MessageData
+    $PathLog = $event.MessageData.PathLog
 
      # Obtener la fecha y hora actual en el formato deseado
      $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
@@ -64,7 +68,7 @@ $action = {
      Compress-Archive -Path $logFile -DestinationPath $zipFile
 }
 
-Register-ObjectEvent -InputObject $watcher -EventName Created -SourceIdentifier monitorCreador -Action $action -MessageData $salida
+Register-ObjectEvent -InputObject $watcher -EventName Created -SourceIdentifier monitorCreador -Action $action -MessageData $messageData
     
 $watcher.EnableRaisingEvents = $true
 
