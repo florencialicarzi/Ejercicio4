@@ -65,6 +65,9 @@ $action = {
     $fileName = Split-Path -Path $Event.SourceEventArgs.FullPath -Leaf
     $fileSize = (Get-Item -Path $filePath).Length # Tamaño del archivo en bytes
 
+    #*TIMESTAMP
+    $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
+
     #*LOGICA DE DUPLICADOS
     $diccionario_arch = @{}
 
@@ -92,26 +95,6 @@ $action = {
 
     foreach($key in $clavesAEliminar){
         $diccionario_arch.Remove($key)
-    }
-
-    #*VERIFICACION EVENTO-DUPLICADO
-    $clave = "$fileName|$fileSize"
-    # Obtener la fecha y hora actual en el formato deseado
-    $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
-
-    # Crear un archivo para imprimir el contenido del hashtable
-    $hashTableLogFile = Join-Path -Path $PathLog -ChildPath "HashTable_$timestamp.txt"
-
-    if ($diccionario_arch.Count -eq 0) {
-        # Si el hashtable está vacío
-        "El hashtable de archivos duplicados está vacío." | Out-File -FilePath $hashTableLogFile -Encoding UTF8
-    } else {
-        # Si el hashtable tiene contenido
-        "Contenido del hashtable de archivos duplicados (CLAVE BUSCADA: $clave ):" | Out-File -FilePath $hashTableLogFile -Encoding UTF8
-        foreach ($key in $diccionario_arch.Keys) {
-            $values = $diccionario_arch[$key] -join ", "
-            "Clave: $key - Valores: $values" | Out-File -FilePath $hashTableLogFile -Encoding UTF8 -Append
-        }
     }
 
     if($diccionario_arch.ContainsKey($clave))
