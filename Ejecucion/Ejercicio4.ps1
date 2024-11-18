@@ -52,7 +52,14 @@ $messageData = [PSCustomObject]@{
 }
  
 $action = {
+    #*PARAMETROS DEL CONTEXTO
     $PathLog = $event.MessageData.PathLog
+    $directorio = $event.MessageData.Directorio
+
+    #*PARAMETROS DEL EVENTO
+    $filePath = $Event.SourceEventArgs.FullPath   # Ruta completa del archivo
+    $fileName = $Event.SourceEventArgs.Name      # Nombre del archivo
+    $fileSize = (Get-Item -Path $filePath).Length # Tamaño del archivo en bytes
 
     # Obtener la fecha y hora actual en el formato deseado
     $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
@@ -65,7 +72,7 @@ $action = {
 
     # Crear el archivo de log dentro de la carpeta
     $logFile = Join-Path -Path $logFolder -ChildPath "log-$timestamp.txt"
-    "Se creó un archivo el $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))" | Out-File -FilePath $logFile -Encoding UTF8
+    "Duplicado: $fileName Peso: $fileSize Creacion:$filePath $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")) Monitoreado en: $directorio" | Out-File -FilePath $logFile -Encoding UTF8
 
     # Crear el archivo ZIP de la carpeta
     $zipFile = Join-Path -Path $PathLog -ChildPath "$timestamp.zip"
