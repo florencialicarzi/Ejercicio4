@@ -1,3 +1,39 @@
+# 43895910 Gonzalez, Luca Sebastian
+# 42597132 Gonzalez, Victor Matias
+# 43458509 Licarzi, Florencia Berenice
+# 42364617 Polito, Thiago
+
+<#
+.SYNOPSIS
+    Este script monitorea un directorio en busca de archivos duplicados y genera copias de seguridad en formato ZIP.
+
+.DESCRIPTION
+    El script se ejecuta en segundo plano, validando continuamente si se están generando archivos duplicados en el directorio especificado (-directorio) y sus subdirectorios. En caso de detectar un archivo duplicado, se registra un log y se archiva el archivo en un archivo comprimido con formato ZIP en el path especificado (-salida).
+    El script permite iniciar y detener el monitoreo según sea necesario.
+
+.PARAMETER -Directorio
+    Ruta del directorio a monitorear. Este parámetro es obligatorio y debe ser único por instancia del script.
+
+.PARAMETER -Salida
+    Ruta del directorio donde se crearán los archivos de backup comprimidos. Este parámetro solo se puede usar junto con -Directorio. 
+
+.PARAMETER -Kill
+    Switch que indica que el script debe detener la ejecucion previamente iniciada. Este parámetro solo se puede usar junto con -Directorio.
+
+.EXAMPLE
+    ./duplicados.ps1 -Directorio "../monitor" -Salida "../salida"
+    Este comando iniciará el monitoreo del directorio especificado en segundo plano, generando backups en el directorio de salida en caso de detectar archivos duplicados.
+
+.EXAMPLE
+    ./duplicados.ps1 -Directorio "../monitor" -Kill
+    Este comando detendrá el proceso demonio que está monitoreando el directorio especificado.
+
+.NOTES
+    - Solo puede haber una instancia del demonio ejecutándose para cada directorio.
+    - El formato de los nombres de los archivos de backup es "yyyyMMdd-HHmmss.zip".
+#>
+
+
 Param (
 
     [CmdletBinding()]
@@ -90,9 +126,6 @@ $action = {
     #*TIMESTAMP
     $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
 
-    # Archivo de log (global)
-        $generalLogFile = Join-Path -Path $PathLog -ChildPath "log.txt"
-
     #*LOGICA DE DUPLICADOS
     $diccionario_arch = @{}
 
@@ -121,23 +154,8 @@ $action = {
     foreach($key in $clavesAEliminar){
         $diccionario_arch.Remove($key)
     }
-    
+
     $claveIsDup = "$fileName|$fileSize"
-
-    # Crear un archivo para imprimir el contenido del hashtable
-    $hashTableLogFile = Join-Path -Path $PathLog -ChildPath "HashTable_$timestamp.txt"
-
-    if ($diccionario_arch.Count -eq 0) {
-        # Si el hashtable está vacío
-        "El hashtable de archivos duplicados está vacío. $claveIsDup" | Out-File -FilePath $hashTableLogFile -Encoding UTF8
-    } else {
-        # Si el hashtable tiene contenido
-        "Contenido del hashtable de archivos duplicados: $claveIsDup" | Out-File -FilePath $hashTableLogFile -Encoding UTF8
-        foreach ($key in $diccionario_arch.Keys) {
-            $values = $diccionario_arch[$key] -join ", "
-            "Clave: $key - Valores: $values" | Out-File -FilePath $hashTableLogFile -Encoding UTF8 -Append
-        }
-    }
 
 
     if($diccionario_arch.ContainsKey($claveIsDup))
@@ -165,11 +183,8 @@ $action = {
         # Eliminar la carpeta original después de comprimirla
         Remove-Item -Path $logFolder -Recurse -Force
 
-        Add-Content -Path $generalLogFile -Value "$timestamp - Archivo nuevo duplicado: $fileName (Tamaño: $fileSize bytes)"
     }
-    else {
-        Add-Content -Path $generalLogFile -Value "$timestamp - Archivo nuevo: $fileName (Tamaño: $fileSize bytes)"
-    }
+
 
 
 }
