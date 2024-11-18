@@ -149,17 +149,21 @@ $action = {
 
 }
 
-Register-ObjectEvent -InputObject $watcher -EventName Created -SourceIdentifier monitorCreador -Action $action -MessageData $messageData
+$leaf = Split-Path -Path $directorio -Leaf
+$time = (Get-Date).ToString("yyyyMMdd-HHmmss")
+$sourceIdentifier = "MonitorCreador|$leaf|$time"
+
+Register-ObjectEvent -InputObject $watcher -EventName Created -SourceIdentifier $sourceIdentifier -Action $action -MessageData $messageData
     
 $watcher.EnableRaisingEvents = $true
 
 Start-Job -ScriptBlock {
 
-    param($watcher)
+    param($watcher, $sourceIdentifier)
         
-    Wait-Event -SourceIdentifier monitorCreador 
+    Wait-Event -SourceIdentifier $sourceIdentifier
 
-} -ArgumentList $watcher
+} -ArgumentList $watcher, $sourceIdentifier
 
 
 Get-EventSubscriber
