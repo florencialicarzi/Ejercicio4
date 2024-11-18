@@ -91,12 +91,29 @@ $action = {
     }
 
     #*VERIFICACION EVENTO-DUPLICADO
+    # Obtener la fecha y hora actual en el formato deseado
+    $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
+
+    # Crear un archivo para imprimir el contenido del hashtable
+    $hashTableLogFile = Join-Path -Path $PathLog -ChildPath "HashTable_$timestamp.txt"
+
+    if ($dupHashTable.Count -eq 0) {
+        # Si el hashtable está vacío
+        "El hashtable de archivos duplicados está vacío." | Out-File -FilePath $hashTableLogFile -Encoding UTF8
+    } else {
+        # Si el hashtable tiene contenido
+        "Contenido del hashtable de archivos duplicados:" | Out-File -FilePath $hashTableLogFile -Encoding UTF8
+        foreach ($key in $dupHashTable.Keys) {
+            $values = $dupHashTable[$key] -join ", "
+            "Clave: $key - Valores: $values" | Out-File -FilePath $hashTableLogFile -Encoding UTF8 -Append
+        }
+    }
+
+
     $clave = "$fileName|$fileSize"
     if($diccionario_arch.ContainsKey($clave))
     {
         #*CREACION ZIP
-        # Obtener la fecha y hora actual en el formato deseado
-        $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
     
         # Crear una carpeta para almacenar el archivo de log
         $logFolder = Join-Path -Path $PathLog -ChildPath "BackUpLog-$timestamp"
