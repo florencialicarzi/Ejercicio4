@@ -52,20 +52,27 @@ $messageData = [PSCustomObject]@{
 }
  
 $action = {
-    param($salida) 
-    #$PathLog = "C:\Users\Florencia\Documents\Facultad\PLAN2023\3654-VirtualizacionDeHardware\log"
     $PathLog = $event.MessageData.PathLog
 
-     # Obtener la fecha y hora actual en el formato deseado
-     $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
+    # Obtener la fecha y hora actual en el formato deseado
+    $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
 
-     # Crear el archivo de log
-     $logFile = Join-Path -Path $PathLog -ChildPath "log-$timestamp.txt"
-     "Se creo un archivo el $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))" | Out-File -FilePath $logFile -Encoding UTF8 -Append
+    # Crear una carpeta para almacenar el archivo de log
+    $logFolder = Join-Path -Path $PathLog -ChildPath "BackUpLog-$timestamp"
+    if (-not (Test-Path $logFolder)) {
+        New-Item -Path $logFolder -ItemType Directory | Out-Null
+    }
 
-     # Crear el archivo ZIP con el log
-     $zipFile = Join-Path -Path $PathLog -ChildPath "$timestamp.zip"
-     Compress-Archive -Path $logFile -DestinationPath $zipFile
+    # Crear el archivo de log dentro de la carpeta
+    $logFile = Join-Path -Path $logFolder -ChildPath "log-$timestamp.txt"
+    "Se creó un archivo el $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))" | Out-File -FilePath $logFile -Encoding UTF8
+
+    # Crear el archivo ZIP de la carpeta
+    $zipFile = Join-Path -Path $PathLog -ChildPath "$timestamp.zip"
+    Compress-Archive -Path $logFolder -DestinationPath $zipFile
+
+    # Eliminar la carpeta original después de comprimirla
+    Remove-Item -Path $logFolder -Recurse -Force
 }
 
 Register-ObjectEvent -InputObject $watcher -EventName Created -SourceIdentifier monitorCreador -Action $action -MessageData $messageData
