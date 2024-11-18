@@ -90,6 +90,9 @@ $action = {
     #*TIMESTAMP
     $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
 
+    # Archivo de log (global)
+        $generalLogFile = Join-Path -Path $PathLog -ChildPath "log.txt"
+
     #*LOGICA DE DUPLICADOS
     $diccionario_arch = @{}
 
@@ -118,8 +121,26 @@ $action = {
     foreach($key in $clavesAEliminar){
         $diccionario_arch.Remove($key)
     }
+    
+    $claveIsDup = "$fileName|$fileSize"
 
-    if($diccionario_arch.ContainsKey($clave))
+    # Crear un archivo para imprimir el contenido del hashtable
+    $hashTableLogFile = Join-Path -Path $PathLog -ChildPath "HashTable_$timestamp.txt"
+
+    if ($diccionario_arch.Count -eq 0) {
+        # Si el hashtable está vacío
+        "El hashtable de archivos duplicados está vacío. $claveIsDup" | Out-File -FilePath $hashTableLogFile -Encoding UTF8
+    } else {
+        # Si el hashtable tiene contenido
+        "Contenido del hashtable de archivos duplicados: $claveIsDup" | Out-File -FilePath $hashTableLogFile -Encoding UTF8
+        foreach ($key in $diccionario_arch.Keys) {
+            $values = $diccionario_arch[$key] -join ", "
+            "Clave: $key - Valores: $values" | Out-File -FilePath $hashTableLogFile -Encoding UTF8 -Append
+        }
+    }
+
+
+    if($diccionario_arch.ContainsKey($claveIsDup))
     {
         #*CREACION ZIP
     
@@ -144,6 +165,10 @@ $action = {
         # Eliminar la carpeta original después de comprimirla
         Remove-Item -Path $logFolder -Recurse -Force
 
+        Add-Content -Path $generalLogFile -Value "$timestamp - Archivo nuevo duplicado: $fileName (Tamaño: $fileSize bytes)"
+    }
+    else {
+        Add-Content -Path $generalLogFile -Value "$timestamp - Archivo nuevo: $fileName (Tamaño: $fileSize bytes)"
     }
 
 
