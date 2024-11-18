@@ -36,27 +36,57 @@
 
 Param (
 
-    [CmdletBinding()]
-    [Parameter(Mandatory = $true, ParameterSetName = 'Inicio')]
-    [Parameter(Mandatory = $true, ParameterSetName = 'Kill')]
     [ValidateNotNullOrEmpty()]
     [string]$directorio,
 
-    [CmdletBinding()]
-    [Parameter(Mandatory = $true, ParameterSetName = 'Inicio')]
     [string]$salida,
 
-    [CmdletBinding()]
-    [Parameter (Mandatory = $true, ParameterSetName = 'Kill')]
     [switch]$kill = $false
 #
 )
 
-if( -not (Test-Path $directorio)) {
-    Write-Output "El Path a monitorear enviado por parametro no existe."
+# Validación: Asegurarse de que el directorio sea proporcionado
+if (-not $directorio) {
+    Write-Error "El parámetro '-directorio' es obligatorio."
+    if ($salida -and $kill) {
+        Write-Error "No puede usar '-salida' y '-kill' juntos. Use uno u otro según la acción deseada."
+        exit 1
+    }
     exit 1
 }
 
+# Validación: Si se proporciona solo '-directorio' sin '-salida' ni '-kill'
+if ($directorio -and -not ($salida -or $kill)) {
+    Write-Error "Debe proporcionar el parámetro '-salida' (para iniciar el monitoreo) o '-kill' (para detenerlo)."
+    exit 1
+}
+
+# Validación: Si se proporcionan '-salida' y '-kill' al mismo tiempo
+if ($salida -and $kill) {
+    Write-Error "No puede usar '-salida' y '-kill' juntos. Use uno u otro según la acción deseada."
+    exit 1
+}
+
+# Validación: Asegurarse de que el directorio proporcionado exista
+if (-not (Test-Path $directorio)) {
+    Write-Error "El Path a monitorear enviado por parámetro no existe."
+    exit 1
+}
+
+# Lógica de ejecución según los parámetros
+if ($kill) {
+    Write-Output "Finalizando monitoreo..."
+    
+} elseif ($salida) {
+    Write-Output "Iniciando monitoreo en el directorio: $directorio"
+    Write-Output "Los Backups se guardarán en: $salida"
+    
+} else {
+    Write-Error "Error inesperado: Parámetros no válidos."
+    exit 1
+}
+
+$directorio = (Resolve-Path -Path $directorio).Path
 
 # Función para verificar si un directorio ya está siendo monitoreado
 function VerificarMonitoreo {
