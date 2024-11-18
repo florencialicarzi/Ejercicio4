@@ -2,17 +2,17 @@ Param (
 
     [CmdletBinding()]
     [Parameter(Mandatory = $true, ParameterSetName = 'Inicio')]
-#    [Parameter(Mandatory = $true, ParameterSetName = 'Kill')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Kill')]
     [ValidateNotNullOrEmpty()]
     [string]$directorio,
 
     [CmdletBinding()]
     [Parameter(Mandatory = $true, ParameterSetName = 'Inicio')]
-    [string]$salida
+    [string]$salida,
 
- #   [CmdletBinding()]
- #   [Parameter (Mandatory = $true, ParameterSetName = 'Kill')]
- #   [switch]$kill = $false
+    [CmdletBinding()]
+    [Parameter (Mandatory = $true, ParameterSetName = 'Kill')]
+    [switch]$kill = $false
 #
 )
 
@@ -21,16 +21,38 @@ if( -not (Test-Path $directorio)) {
     exit 1
 }
 
+
+# Función para verificar si un directorio ya está siendo monitoreado
+function VerificarMonitoreo {
+    param ($directorio)
+    return Get-EventSubscriber | Where-Object {
+        $_.SourceObject.Path -eq $directorio -and $_.EventName -eq 'Created'
+    }
+}
+
+# Lógica para detener monitoreo con el flag -kill
+if ($kill) {
+    $suscriptor = VerificarMonitoreo -directorio $directorio
+    if ($null -ne $suscriptor) {
+        $suscriptor | Unregister-Event
+        Write-Output "Monitoreo detenido para el directorio $directorio."
+    } else {
+        Write-Output "No se encontró un monitoreo activo para el directorio $directorio."
+    }
+    exit
+}
+
+# Validar si el directorio ya está siendo monitoreado
+if (VerificarMonitoreo -directorio $directorio) {
+    Write-Output "Ya existe un proceso monitoreando el directorio $directorio."
+    exit 1
+}
+
+
 if( -not (Test-Path $salida)) {
     Write-Output "El Path donde se crean los logs enviado por parametro no existe."
     exit 1
 }
-
-#if ($kill) {
-#    Stop-Monitoring
-#    exit 1
-#}
-
 New-Object System.IO.FileSystemWatcher | Get-Member -Type Event | Select-Object Name
 
 # 1 - InputObject
@@ -110,6 +132,10 @@ $action = {
         # Crear el archivo de log dentro de la carpeta
         $logFile = Join-Path -Path $logFolder -ChildPath "log-$timestamp.txt"
         "Duplicado: $fileName Peso: $fileSize Creacion:$filePath $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")) Monitoreado en: $directorio" | Out-File -FilePath $logFile -Encoding UTF8
+
+        #Mover el archivo duplicado
+        $newFilePath = Join-Path -Path $logFolder -ChildPath $fileName
+        Move-Item -Path $filePath -Destination $newFilePath -Force
     
         # Crear el archivo ZIP de la carpeta
         $zipFile = Join-Path -Path $PathLog -ChildPath "$timestamp.zip"
