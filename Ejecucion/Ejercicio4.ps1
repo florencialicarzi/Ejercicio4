@@ -45,6 +45,10 @@ $watcher.Path = $directorio
 
 $watcher.NotifyFilter = [System.IO.NotifyFilters]'FileName'
 
+$watcher.Filter = "*"
+
+$watcher.IncludeSubdirectories = $true
+
 
 $messageData = [PSCustomObject]@{
     PathLog    = $salida
@@ -58,7 +62,7 @@ $action = {
 
     #*PARAMETROS DEL EVENTO
     $filePath = $Event.SourceEventArgs.FullPath   # Ruta completa del archivo
-    $fileName = $Event.SourceEventArgs.Name      # Nombre del archivo
+    $fileName = Split-Path -Path $Event.SourceEventArgs.FullPath -Leaf
     $fileSize = (Get-Item -Path $filePath).Length # Tamaño del archivo en bytes
 
     #*LOGICA DE DUPLICADOS
@@ -81,7 +85,7 @@ $action = {
     $clavesAEliminar = [System.Collections.ArrayList]::new();
 
     foreach ($key in $diccionario_arch.Keys) {
-        if ($diccionario_arch[$key].Count -lt 1) {
+        if ($diccionario_arch[$key].Count -lt 2) {
             $clavesAEliminar.Add($key) > $null
         }
     }
@@ -91,6 +95,7 @@ $action = {
     }
 
     #*VERIFICACION EVENTO-DUPLICADO
+    $clave = "$fileName|$fileSize"
     # Obtener la fecha y hora actual en el formato deseado
     $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
 
@@ -102,15 +107,13 @@ $action = {
         "El hashtable de archivos duplicados está vacío." | Out-File -FilePath $hashTableLogFile -Encoding UTF8
     } else {
         # Si el hashtable tiene contenido
-        "Contenido del hashtable de archivos duplicados:" | Out-File -FilePath $hashTableLogFile -Encoding UTF8
+        "Contenido del hashtable de archivos duplicados (CLAVE BUSCADA: $clave ):" | Out-File -FilePath $hashTableLogFile -Encoding UTF8
         foreach ($key in $diccionario_arch.Keys) {
             $values = $diccionario_arch[$key] -join ", "
             "Clave: $key - Valores: $values" | Out-File -FilePath $hashTableLogFile -Encoding UTF8 -Append
         }
     }
 
-
-    $clave = "$fileName|$fileSize"
     if($diccionario_arch.ContainsKey($clave))
     {
         #*CREACION ZIP
