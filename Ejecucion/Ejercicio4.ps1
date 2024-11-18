@@ -45,6 +45,10 @@ $watcher.Path = $directorio
 
 $watcher.NotifyFilter = [System.IO.NotifyFilters]'FileName'
 
+$watcher.Filter = "*"
+
+$watcher.IncludeSubdirectories = $true
+
 
 $messageData = [PSCustomObject]@{
     PathLog    = $salida
@@ -58,28 +62,65 @@ $action = {
 
     #*PARAMETROS DEL EVENTO
     $filePath = $Event.SourceEventArgs.FullPath   # Ruta completa del archivo
-    $fileName = $Event.SourceEventArgs.Name      # Nombre del archivo
+    $fileName = Split-Path -Path $Event.SourceEventArgs.FullPath -Leaf
     $fileSize = (Get-Item -Path $filePath).Length # Tamaño del archivo en bytes
 
-    # Obtener la fecha y hora actual en el formato deseado
+    #*TIMESTAMP
     $timestamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
 
-    # Crear una carpeta para almacenar el archivo de log
-    $logFolder = Join-Path -Path $PathLog -ChildPath "BackUpLog-$timestamp"
-    if (-not (Test-Path $logFolder)) {
-        New-Item -Path $logFolder -ItemType Directory | Out-Null
+    #*LOGICA DE DUPLICADOS
+    $diccionario_arch = @{}
+
+    #Obtengo el listado de archivos
+    $res_archivos = Get-ChildItem -Recurse -File -Path $directorio
+
+    foreach ($arch in $res_archivos){
+        $clave = "$($arch.Name)|$($arch.Length)"
+        
+        if($diccionario_arch.ContainsKey($clave)){
+            $diccionario_arch[$clave].Add($arch.Directory) > $null
+        }else{
+            $diccionario_arch[$clave] = [System.Collections.ArrayList]::new()
+            $diccionario_arch[$clave].Add($arch.Directory) > $null
+        }
     }
 
-    # Crear el archivo de log dentro de la carpeta
-    $logFile = Join-Path -Path $logFolder -ChildPath "log-$timestamp.txt"
-    "Duplicado: $fileName Peso: $fileSize Creacion:$filePath $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")) Monitoreado en: $directorio" | Out-File -FilePath $logFile -Encoding UTF8
+    $clavesAEliminar = [System.Collections.ArrayList]::new();
 
-    # Crear el archivo ZIP de la carpeta
-    $zipFile = Join-Path -Path $PathLog -ChildPath "$timestamp.zip"
-    Compress-Archive -Path $logFolder -DestinationPath $zipFile
+    foreach ($key in $diccionario_arch.Keys) {
+        if ($diccionario_arch[$key].Count -lt 2) {
+            $clavesAEliminar.Add($key) > $null
+        }
+    }
 
-    # Eliminar la carpeta original después de comprimirla
-    Remove-Item -Path $logFolder -Recurse -Force
+    foreach($key in $clavesAEliminar){
+        $diccionario_arch.Remove($key)
+    }
+
+    if($diccionario_arch.ContainsKey($clave))
+    {
+        #*CREACION ZIP
+    
+        # Crear una carpeta para almacenar el archivo de log
+        $logFolder = Join-Path -Path $PathLog -ChildPath "BackUpLog-$timestamp"
+        if (-not (Test-Path $logFolder)) {
+            New-Item -Path $logFolder -ItemType Directory | Out-Null
+        }
+    
+        # Crear el archivo de log dentro de la carpeta
+        $logFile = Join-Path -Path $logFolder -ChildPath "log-$timestamp.txt"
+        "Duplicado: $fileName Peso: $fileSize Creacion:$filePath $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")) Monitoreado en: $directorio" | Out-File -FilePath $logFile -Encoding UTF8
+    
+        # Crear el archivo ZIP de la carpeta
+        $zipFile = Join-Path -Path $PathLog -ChildPath "$timestamp.zip"
+        Compress-Archive -Path $logFolder -DestinationPath $zipFile
+    
+        # Eliminar la carpeta original después de comprimirla
+        Remove-Item -Path $logFolder -Recurse -Force
+
+    }
+
+
 }
 
 Register-ObjectEvent -InputObject $watcher -EventName Created -SourceIdentifier monitorCreador -Action $action -MessageData $messageData
